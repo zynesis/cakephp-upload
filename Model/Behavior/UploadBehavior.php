@@ -51,6 +51,7 @@ class UploadBehavior extends ModelBehavior {
 		'keepFilesOnDelete' => false,
 		'mode' => 0777,
 		'handleUploadedFileCallback' => null,
+		'handleUploadedFileAndThumbCallback' => null,
 		'nameCallback' => null,
 	);
 
@@ -321,6 +322,8 @@ class UploadBehavior extends ModelBehavior {
 					$temp[$model->alias][$options['fields']['dir']] = $db->value($tempPath, 'string');
 				}
 			}
+
+			$this->handleUploadedFileAndThumb($model, $field, $tmp, $filePath);
 		}
 
 		$this->_updateRecord($model, $temp);
@@ -348,6 +351,13 @@ class UploadBehavior extends ModelBehavior {
 		}
 
 		return rename($filename, $destination);
+	}
+
+	public function handleUploadedFileAndThumb(Model $model, $field, $filename, $destination) {
+		$callback = Hash::get($this->settings[$model->alias][$field], 'handleUploadedFileAndThumbCallback');
+		if (is_callable(array($model, $callback), true)) {
+			return $model->{$callback}($field, $filename, $destination);
+		}
 	}
 
 /**
