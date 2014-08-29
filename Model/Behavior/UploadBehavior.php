@@ -1896,6 +1896,10 @@ class UploadBehavior extends ModelBehavior {
 		$createThumbnails = $this->settings[$model->alias][$field]['thumbnails'];
 		$hasThumbnails = !empty($this->settings[$model->alias][$field]['thumbnailSizes']);
 
+		if ($this->settings[$model->alias][$field]['thumbnailMethod'] != 'imagick') {
+			$isMedia = false;
+		}
+
 		if (($isImage || $isMedia) && $createThumbnails && $hasThumbnails) {
 			$method = $this->settings[$model->alias][$field]['thumbnailMethod'];
 
