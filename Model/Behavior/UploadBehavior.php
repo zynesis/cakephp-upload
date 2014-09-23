@@ -327,7 +327,7 @@ class UploadBehavior extends ModelBehavior {
 		}
 
 		$this->_updateRecord($model, $temp);
-		return $this->_unlinkFiles($model);
+		return true; //$this->_unlinkFiles($model);
 	}
 
 /**
@@ -347,8 +347,42 @@ class UploadBehavior extends ModelBehavior {
 		}
 
 		if (is_uploaded_file($filename)) {
-			return move_uploaded_file($filename, $destination);
+			if (CakeSession::check('Storage.file_chunking')) {
+				file_put_contents(
+					$destination,
+					fopen($filename, 'r'),
+					FILE_APPEND
+				);
+			/*	file_put_contents(
+            $destination,
+            fopen('php://input', 'r'),
+            FILE_APPEND
+        );
+      */
+			} else {
+				return move_uploaded_file($filename, $destination);
+			}
 		}
+/*
+		$appendFile = false;
+		if (!empty($_SERVER['HTTP_CONTENT_RANGE'])) {
+			$contentRange = $_SERVER['HTTP_CONTENT_RANGE'] ? preg_split('/[^0-9]+/', $_SERVER['HTTP_CONTENT_RANGE']) : null;
+			if (!empty($contentRange)) {
+				$size = filesize($filename);
+				$appendFile = $contentRange && is_file($destination) && $size > filesize($destination);
+			}
+		}
+
+    if ($appendFile) {
+        file_put_contents(
+            $destination,
+            fopen($filename, 'r'),
+            FILE_APPEND
+        );
+    } else {
+        move_uploaded_file($filename, $destination);
+    }
+*/
 
 		return rename($filename, $destination);
 	}
@@ -1895,10 +1929,6 @@ class UploadBehavior extends ModelBehavior {
 		$isMedia = $this->_isMedia($this->runtime[$model->alias][$field]['type']);
 		$createThumbnails = $this->settings[$model->alias][$field]['thumbnails'];
 		$hasThumbnails = !empty($this->settings[$model->alias][$field]['thumbnailSizes']);
-
-		if ($this->settings[$model->alias][$field]['thumbnailMethod'] != 'imagick') {
-			$isMedia = false;
-		}
 
 		if (($isImage || $isMedia) && $createThumbnails && $hasThumbnails) {
 			$method = $this->settings[$model->alias][$field]['thumbnailMethod'];
