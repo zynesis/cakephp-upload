@@ -346,45 +346,7 @@ class UploadBehavior extends ModelBehavior {
 			return $model->{$callback}($field, $filename, $destination);
 		}
 
-		if (is_uploaded_file($filename)) {
-			if (CakeSession::check('Storage.file_chunking')) {
-				file_put_contents(
-					$destination,
-					fopen($filename, 'r'),
-					FILE_APPEND
-				);
-			/*	file_put_contents(
-            $destination,
-            fopen('php://input', 'r'),
-            FILE_APPEND
-        );
-      */
-			} else {
-				return move_uploaded_file($filename, $destination);
-			}
-		}
-/*
-		$appendFile = false;
-		if (!empty($_SERVER['HTTP_CONTENT_RANGE'])) {
-			$contentRange = $_SERVER['HTTP_CONTENT_RANGE'] ? preg_split('/[^0-9]+/', $_SERVER['HTTP_CONTENT_RANGE']) : null;
-			if (!empty($contentRange)) {
-				$size = filesize($filename);
-				$appendFile = $contentRange && is_file($destination) && $size > filesize($destination);
-			}
-		}
-
-    if ($appendFile) {
-        file_put_contents(
-            $destination,
-            fopen($filename, 'r'),
-            FILE_APPEND
-        );
-    } else {
-        move_uploaded_file($filename, $destination);
-    }
-*/
-
-		return rename($filename, $destination);
+		return true;
 	}
 
 	public function handleUploadedFileAndThumb(Model $model, $field, $filename, $destination) {
