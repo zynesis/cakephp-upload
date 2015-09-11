@@ -36,6 +36,7 @@ class UploadBehavior extends ModelBehavior {
 		'minHeight' => 0,
 		'maxWidth' => 0,
 		'minWidth' => 0,
+		'resize_image' => false,
 		'thumbnails' => true,
 		'thumbnailMethod' => 'imagick',
 		'thumbnailName' => null,
@@ -245,6 +246,10 @@ class UploadBehavior extends ModelBehavior {
 				$model, $field, $this->runtime[$model->alias][$field]['name'], $model->data, array(
 					'saveType' => $isUpdating ? 'update' : 'create',
 			));
+
+			if ($this->_isImage($this->runtime[$model->alias][$field]['type']) && $options['resize_image']) {
+				//$d = $this->_getDimensions($filePath, $options['resize_image'], $options['maxWidth'], $options['maxHeight']);
+			}
 
 			$model->data[$model->alias] = array_merge($model->data[$model->alias], array(
 				$field => $this->runtime[$model->alias][$field]['name'],
@@ -2106,6 +2111,44 @@ class UploadBehavior extends ModelBehavior {
 			$pathInfo['filename'] = basename($pathInfo['basename'], '.' . $pathInfo['extension']);
 		}
 		return $pathInfo;
+	}
+
+	protected function _getDimensions($src, $width = 0, $height = 0, $crop = false) {
+		debug($src);
+		if(!list($w, $h) = getimagesize($src)) return "Unsupported picture type!";
+
+		if ($crop) {
+			$originalWidth = $w;
+			$originalHeight = $h;
+			$ratio = max($width/$w, $height/$h);
+
+			$h = $height / $ratio;
+			$w = $width / $ratio;
+
+			$x = ($originalWidth - $w) / 2;
+			$y = ($originalHeight - $h)  / 2;
+		} else {
+			$x = 0;
+			$y = 0;
+
+			if ($w < $width && $h < $height) {
+				$width = $w;
+				$height = $h;
+			} else {
+				$ratio = min($width/$w, $height/$h);
+				$width = $w * $ratio;
+				$height = $h * $ratio;
+			}
+		}
+
+		return array(
+			'h' => round($h),
+			'w' => round($w),
+			'height' => round($height),
+			'width' => round($width),
+			'x' => round($x),
+			'y' => round($y)
+		);
 	}
 
 }
