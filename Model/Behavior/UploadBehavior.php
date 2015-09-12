@@ -2217,7 +2217,7 @@ class UploadBehavior extends ModelBehavior {
 			case 'bmp': imagewbmp($new, $dst); break;
 			case 'gif': imagegif($new, $dst); break;
 			case 'jpg': imagejpeg($new, $dst, 94); break;
-			case 'png': imagepng($new, $dst, 94); break;
+			case 'png': imagepng($new, $dst, 8); break;
 		}
 
 		$pathinfo = pathinfo($dst);
