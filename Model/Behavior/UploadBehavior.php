@@ -247,8 +247,18 @@ class UploadBehavior extends ModelBehavior {
 					'saveType' => $isUpdating ? 'update' : 'create',
 			));
 
-			if ($this->_isImage($this->runtime[$model->alias][$field]['type']) && $options['resize_image']) {
-				//$d = $this->_getDimensions($filePath, $options['resize_image'], $options['maxWidth'], $options['maxHeight']);
+			if ($this->_isImage($model->data[$model->alias][$field]['type']) && $options['resize_image']) {
+				$dimensions = $this->_getDimensions($model->data[$model->alias][$field]['tmp_name'], $options['maxWidth'], $options['maxHeight']);
+				if ($dimensions['w'] > $dimensions['width'] || $dimensions['h'] > $dimensions['height']) {
+					$resize = $this->_resizeAndSave($model->data[$model->alias][$field]['tmp_name'], $model->data[$model->alias][$field]['tmp_name'], $dimensions);
+					if (empty($resize)) {
+						return false;
+					}
+
+					$this->runtime[$model->alias][$field]['name'] = $resize['name'];
+					$this->runtime[$model->alias][$field]['type'] = $resize['type'];
+					$this->runtime[$model->alias][$field]['size'] = $resize['size'];
+				}
 			}
 
 			$model->data[$model->alias] = array_merge($model->data[$model->alias], array(
@@ -2114,7 +2124,6 @@ class UploadBehavior extends ModelBehavior {
 	}
 
 	protected function _getDimensions($src, $width = 0, $height = 0, $crop = false) {
-		debug($src);
 		if(!list($w, $h) = getimagesize($src)) return "Unsupported picture type!";
 
 		if ($crop) {
@@ -2131,7 +2140,7 @@ class UploadBehavior extends ModelBehavior {
 			$x = 0;
 			$y = 0;
 
-			if ($w < $width && $h < $height) {
+			if ($w <= $width && $h <= $height) {
 				$width = $w;
 				$height = $h;
 			} else {
@@ -2151,4 +2160,98 @@ class UploadBehavior extends ModelBehavior {
 		);
 	}
 
+	protected function _resizeAndSave($src, $dst, $dimensions, $type = null){
+		extract($dimensions);
+		if (is_null($type) || empty($type)) $type = $this->_getType($src);
+
+		if ($type === false) return false; // not supported
+
+		// change to correct image extension if incorrect
+		$pathinfo = pathinfo($dst);
+		if (strtolower($pathinfo['extension']) != $type) {
+				$ext = false;
+				switch ($type) {
+					case 'bmp':
+					case 'gif':
+					case 'png':
+						$ext = $type;
+					break;
+					case 'jpg':
+						if (in_array(strtolower($pathinfo['extension']), ['jpeg', 'jpg'])) {
+							$ext = $type;
+						}
+					break;
+					default : return "Unsupported picture type!";
+			}
+
+			if ($ext) {
+				$dst = $pathinfo['dirname'] . DS . $pathinfo['filename'] . "." . $type;
+			}
+		}
+
+		switch($type){
+			case 'bmp': $img = imagecreatefromwbmp($src); break;
+			case 'gif': $img = imagecreatefromgif($src); break;
+			case 'jpg': $img = imagecreatefromjpeg($src); break;
+			case 'png': $img = imagecreatefrompng($src); break;
+			default : return "Unsupported picture type!";
+		}
+
+		$new = imagecreatetruecolor($width, $height);
+
+		// preserve transparency
+		switch($type){
+			case 'gif':
+				imagecolortransparent($new, imagecolorallocatealpha($new, 0, 0, 0, 127));
+				imagealphablending($new, false);
+				imagesavealpha($new, true);
+				break;
+			case 'png':
+				imagefill($new, 0, 0, imagecolorallocate($new, 255, 255, 255));
+				imagealphablending($new, true);
+				break;
+		}
+
+		imagecopyresampled($new, $img, 0, 0, $x, $y, $width, $height, $w, $h);
+
+		debug($type);
+		switch($type){
+			case 'bmp': imagewbmp($new, $dst); break;
+			case 'gif': imagegif($new, $dst); break;
+			case 'jpg': imagejpeg($new, $dst, 85); break;
+			case 'png': imagepng($new, $dst, 85); break;
+		}
+
+		$pathinfo = pathinfo($dst);
+		$info = getimagesize($dst);
+		return [
+			'name' => $pathinfo['basename'],
+			'size' => filesize($dst),
+			'type' => $info['mime']
+		];
+	}
+
+	protected function _getType($imgFile){
+		$info = getimagesize($imgFile);
+		switch($info['mime']){
+			case 'image/jpeg':
+			case 'image/jpeg':
+			case 'image/pjpeg':
+			case 'image/jpg':
+				return 'jpg';
+				break;
+			case 'image/gif':
+				return 'gif';
+				break;
+			case 'image/png':
+			case 'image/x-png':
+				return 'png';
+				break;
+			case 'image/bmp':
+				return 'bmp';
+				break;
+			default:
+				return false;
+		}
+	}
 }
