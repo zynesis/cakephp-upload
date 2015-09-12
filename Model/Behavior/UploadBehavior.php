@@ -2213,8 +2213,6 @@ class UploadBehavior extends ModelBehavior {
 		}
 
 		imagecopyresampled($new, $img, 0, 0, $x, $y, $width, $height, $w, $h);
-
-		debug($type);
 		switch($type){
 			case 'bmp': imagewbmp($new, $dst); break;
 			case 'gif': imagegif($new, $dst); break;
